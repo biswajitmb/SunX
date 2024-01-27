@@ -1,0 +1,4 @@
+simar.egg-info/PKG-INFO
+simar.egg-info/SOURCES.txt
+simar.egg-info/dependency_links.txt
+simar.egg-info/top_level.txt

@@ -1,0 +1,45 @@
+[SelectEvent] 
+data_dir = /Users/bmondal/BM_Works/SOL20150622T1830/data
+event_dateTime = 2015-06-22T17:36:00
+aia_filter = 94
+FOV = [[0,100],[150,250]] #not implemented properly
+remove_level1_data = False #not implemented properly
+NumCore = 0
+
+[Heating]
+qbkg = 1.0e-5
+tau=50
+dur=20000
+q0min=0.02
+q0max=2.0
+Fp=0.2
+L_half = 5.0
+
+
+
+
+[SetupSimulation]
+LoopParamFile = /Users/bmondal/BM_Works/MaGIXS/MaGIXS_1/XBP_1/Extrapolated_loops/Traced_loops_PosNeg_SeedMaxZ050.0/newOBS/MinZ_0.1Mm/newOBS_XBP001.dat
+No_loops = None
+Area_File = True
+L_min = 2.0
+L_max = 1000.0
+AspectRatio = 10
+Fixed_radious = 2.0
+Thresold_Phot_B = 10
+Minimum_height = 2.0
+ConstPoyntingFlux = True
+CoronalBase = 1.0
+
+[NEI]
+HydradDir = /Users/bmondal/BM_Works/NEI/Hydrad_outputs/steady-run_NEI/
+EquilIonFraction_file = /Users/bmondal/OneDrive_NASA/NPP_works/codes/Make_lines_Chianti/Make_Table/chianti_mod.ioneq
+
+## Descriptions for [SelectEvent]
+#aia_filter - name of aia filter(s) for which the event will be selected
+#event_dateTime - date and time of the event (yyyy.mm.ddThh:mm:ss). If data exist preior then it will not download.
+#data_dir - directory of the event file. If the data does not exist then it will be downloaded
+#FOV - [[xy_bot_left],[xy_top_right]]: FOV of the selected event. If None then user can select from mouse cursore
+                      #xy_bot_left - lower left of the FOV in arc-sec
+                      #xy_top_right - upper right of the FOV
+#remove_level1_data - If true, then the level-1 data will be removed from the local disk after generating level-1.5
