@@ -1,0 +1,432 @@
+import configparser
+from arsim.arsim_util import *
+import numpy as np
+import os,sys,glob,time
+
+class fieldalign_param(object):
+    def __init__(self,configfile=None):
+        if os.path.isfile(configfile) is False:
+            raise Exception("%% simar_error : Congig-File not exist- "+configfile)
+        config = configparser.ConfigParser()
+        config.read(configfile)
+        self.config = config
+    def nanoflareprof(self,qbkg=1.0e-5,tau=50, dur=20000, q0min=0.02, q0max=2.0, Fp=0.2,  L_half = 5.0, PrintOut = False,HeatingFunction = False, seed = None):
+       '''
+       Generates a random sequence of nanoflares from the minimum and maximum abailable magnatic energy associated with a loop.
+       The delay between successive events is proportional to the magnitude of the first event. 
+       This corresponds to a physical scenario in which strand footpoints are constantly driven by photospheric 
+       convection, and a nanoflare occurs when a critical level of magnetic stress is reached.
+    
+       22-Jan-30, Biswajit.
+       22-Feb-08, Biswajit, Modfied to match the time delay such that the average 
+                  heating rate is equal to the upward poyinting flux from the photosphere.
+    
+       Inputs:
+         q0min -       minimum heating rate
+         q0max -       maximum heating rate
+         tau - half duration of nanoflare (s) (triangluar profile assumed)
+         dur - duration of simulation (s)
+         L_half - loop half length in Mm
+         Fp - poynting flux rate in erg/cm2/s
+
+         Optional:
+           PrintOut
+           HeatingFunction
+           seed
+    
+       Outputs:
+         Peak_time - peak time of the events.
+         Peak_heat - peak heating rate (erg cm^-3 s^-1)
+         time -        time array (1 sec increment) # if HeatingFunction = True
+         heat -        corresponding array of heating rate (erg cm^-3 s^-1) # if HeatingFunction = True
+    
+       Example:
+    
+             Peak_time,Peak_heat = nano_seq_mod2(qbkg=1.0e-5,tau=50, dur=600000, q0min=0.002, q0max=0.02,  L_half = 10.0, PrintOut = False,HeatingFunction = False, seed = None)
+              
+             a1,b1,_=plt.hist(np.log10(Peak_heat),bins=50) 
+             Peak_time,Peak_heat = nano_seq_mod(qbkg=1.0e-5,tau=50, dur=60000, q0min=0.002, q0max=0.02,  L_half = 10.0, PrintOut = False,HeatingFunction = False, seed = None)
+              
+             b1=10**b1 
+             de1 = b1[1::]-b1[0:-1] 
+             a,b,_=plt.hist(np.log10(Peak_heat),bins=20,alpha=0.5) 
+             b=10**b 
+             plt.close('all')  
+             plt.yscale('log')  
+             plt.xscale('log')  
+             de = b[1::]-b[0:-1] 
+             plt.step((b1[1::]+b1[0:-1])/2.0,a1/de1)  
+             plt.step((b[1::]+b[0:-1])/2.0,a/de)  
+             plt.show()                                                                                                                                                               
+       Note:  the first 500 s of the simulation should be ignored because they could be affected by the initial conditions
+       '''
+    
+       time = np.arange(dur + 1)
+       if HeatingFunction is True : heat = np.zeros(int(dur + 1))
+    
+       Prop_const = tau*L_half*1.0e8/Fp #Proportionality constant. 
+       if seed is not None : np.random.seed(seed)
+       t1 = int(500*np.random.uniform(low=0.0, high=1.0, size=1)[0])   # first nanoflare begins randomly in the first 500 s
+       q00 = np.random.uniform(low=q0min, high=q0max, size=1)[0]
+       if HeatingFunction is True :
+           for i in range(tau+1):              #triangular profile rise
+               heat[t1+i] = q00*i/tau
+           for i in range(tau+1, (2*tau)+1): heat[t1+i] = q00*(2.*tau - i)/tau  #;  decay
+    
+       Peak_heat = [q00] #peak heating rate of each triangular profile
+       Peak_time = [t1+tau] #peak time
+    
+       k = 0
+       tnew = t1 + q00*Prop_const
+       delay_arr = [tnew - t1]
+       delay_good = []
+       while (tnew+2*tau < dur):
+           k = k + 1
+           q0k = np.random.uniform(low=q0min, high=q0max, size=1)[0]
+           if HeatingFunction is True :
+               for i in range(tau+1): heat[int(tnew+i)] = heat[int(tnew+i)] + q0k*i/tau
+               for i in range(tau+1, (2*tau)+1) : heat[int(tnew+i)] = heat[int(tnew+i)] + q0k*(2.*tau - i)/tau
+    
+           Peak_heat += [q0k]
+           Peak_time += [tnew+tau]
+           told = tnew
+           tnew = told + q0k*Prop_const
+           delay_arr += [tnew - told]
+           if (tnew >= 500): delay_good += [tnew - told]
+       delay_arr = np.array(delay_arr)
+       delay_good = np.array(delay_good)
+       if HeatingFunction is True :
+           h_cor = L_half*1.0e8 #  coronal scale height
+           heat = heat + qbkg
+           mean_heat = np.mean(heat[500:int(dur)])
+           Mean_energy_flux = mean_heat*h_cor #erg/cm2/s
+    
+       ss = np.where(delay_good != 0.)
+       delay_good = delay_good[ss]
+       mean_delay = np.mean(delay_good)
+       median_delay = np.median(delay_good)
+    
+       ss = np.where(delay_arr != 0.)
+       delay_arr = delay_arr[ss]
+       mean_delay_all = np.mean(delay_arr)
+       median_delay_all = np.median(delay_arr)
+       h_cor = L_half*1.0e8 #5.e9  #;  coronal scale height
+       if PrintOut == 'True':
+           print(' ')
+           if HeatingFunction is True : print('mean energy flux = ', Mean_energy_flux)
+           print('mean delay = ', mean_delay)
+           print('median delay = ', median_delay)
+           print(' ')
+           print('Including the first 500 s:')
+           print('mean delay = ', mean_delay_all)
+           print('median delay = ', median_delay_all)
+    
+       if HeatingFunction is True :return time,heat,np.array(Peak_time),np.array(Peak_heat),Mean_energy_flux
+       else: return np.array(Peak_time),np.array(Peak_heat)
+
+
+    def Average_Heating_Rate(self,alpha=2.0,q0max=2.0,q0min=0.02):
+        '''
+        It will return the average peak heating rate of a nano-flare sequence.
+        
+        Inputs:
+           alpha -        power-law index of peak heating rate probability distribution
+           q0min -        minimum heating rate (erg/cm3/s)
+           q0max -        maximum heating rate (erg/cm3/s)
+    
+        Outputs:
+           <Q0> - average peak heating rate in erg/cm3/s
+    
+        --- Biswajit 08/02/2022.
+        '''
+    
+        if alpha == 1: Q0 = (q0max - q0min) / np.log(q0max/q0min)
+        elif alpha == 2: Q0 = (np.log(q0max/q0min) * q0max * q0min) / (q0max - q0min)
+        else:
+           alp1 = 1.0-alpha
+           alp2 = 2.0-alpha
+           const2 = alp1/alp2
+           Q0 = const2 * (q0max**alp2 - q0min**alp2)/(q0max**alp1 - q0min**alp1)
+        return Q0 #erg/cm3/s
+
+    def Estimate_PoyntingFlux(self,L_half = 5.0,Vs=1.0, c = 0.3,Fp = None,B_avg = 4.0,B_Coronal_base=4.0):
+        L_half = L_half*1.0e8 #in cm
+        if Fp is not None: Fp = Fp
+        else:
+            Vs = Vs*1.0e5 #in cm/s
+            Fp = (c*Vs*B_avg*B_Coronal_base)/(4.0* np.pi) #Poynting_flux
+        return Fp
+
+    def char_delay(self,tau=50, Q0=0.2, L_half = 5.0,B_avg = 4.0,Vs=1.0, c = 0.3,Fp = None,B_Coronal_base=4.0):
+        '''
+        Purpose: Estimate the characteristic delay between two nanoflares associated with a loop.
+    
+        OutPut: Characteristic delay time in s
+    
+        Inputs:
+            tau - half duration of nanoflare (s) (triangluar profile assumed)
+            Q0 - average peak heating rate in erg/cm3/s 
+            alpha - slope of heating frequency
+            L_half - loop half length in Mm
+            B_avg - average magnetic field assiciated with the loop
+            Vs - Photospheric Share velocity in km/s
+            c - ratio of share component and Z-components of magnetic field, i.e.,  Bs/Bz
+            Fp - Given poynting flux (erg/cm2/s). If it is 'None' then the Poynting flux will be = (c*Vs*B_avg*B_avg)/(4.0* np.pi)
+        Biswajit, 08.Feb.2022
+        '''
+        L_half = L_half*1.0e8 #in cm
+        if Fp is not None: Fp = Fp
+        else:
+            Vs = Vs*1.0e5 #in cm/s
+            Fp = (c*Vs*B_avg*B_Coronal_base)/(4.0* np.pi) #Poynting_flux
+        const = tau * L_half / Fp
+        return const*Q0
+    def nanoflareprof_PoLaw(self,alpha=2.4,qbkg=1.0e-5,tau=50, dur=60000, delay=1000.0, q0min=0.02, q0max=2.0, Q0=0.2,  L_half = 5.0, PrintOut = False,HeatingFunction = False, seed = None):
+        '''
+        Generates a sequence of nanoflares from a power-law probability distribution of peak nanoflare 
+        heating rate. The delay between successive events is proportional to the magnitude of the first event. 
+        This corresponds to a physical scenario in which strand footpoints are constantly driven by photospheric 
+        convection, and a nanoflare occurs when a critical level of magnetic stress is reached.
+    
+    
+        18-jul-02, written, J. Klimchuk in IDL
+        19-mar-19, J. Klimchuk, fixed bug to allow overlapping nanoflares
+        21-apr-01, J. Klimchuk, corrected comment to indicate that tau is the half duration of the nanoflare, not total duration
+        22-Jan-30, Biswajit, convert to python3 
+                             # Note: qbkg is not required for EBTEL++ as it will be given separately. 
+                             # Thus it will not be used in the retured array of Peak_heat
+        22-Feb-08, Biswajit, Modfied to match the time delay such that the average heating rate is equal to the upward poyinting flux from the photosphere.
+    
+        Inputs:
+          alpha -       power-law index of peak heating rate probability distribution
+          q0min -       minimum heating rate
+          q0max -       maximum heating rate
+          delay -       characteristic delay between successive events (s)
+          qbkg -        steady background heating rate
+          tau - half duration of nanoflare (s) (triangluar profile assumed)
+          dur - duration of simulation (s)
+          L_half - loop half length in Mm
+          Q0 - average peak heating rate in erg/cm3/s
+    
+        Outputs:
+          Peak_time - peak time of the events.
+          Peak_heat - peak heating rate (erg cm^-3 s^-1)
+          time -        time array (1 sec increment) # if HeatingFunction = True
+          heat -        corresponding array of heating rate (erg cm^-3 s^-1) # if HeatingFunction = True
+    
+        Example:
+    
+              Peak_time,Peak_heat = nano_seq_mod(alpha=2.4,qbkg=1.0e-5,tau=50, dur=600000, delay=1000.0, q0min=0.002, q0max=0.02, Q0=0.02,  L_half = 10.0, PrintOut = False,HeatingFunction = False, seed = None)
+               
+              a1,b1,_=plt.hist(np.log10(Peak_heat),bins=50) 
+              Peak_time,Peak_heat = nano_seq_mod(alpha=1.5,qbkg=1.0e-5,tau=50, dur=600000, delay=1000.0, q0min=0.002, q0max=0.02, Q0=0.02,  L_half = 10.0, PrintOut = False,HeatingFunction = False, seed = None)
+               
+               
+              b1=10**b1 
+              de1 = b1[1::]-b1[0:-1] 
+              a,b,_=plt.hist(np.log10(Peak_heat),bins=20,alpha=0.5) 
+              b=10**b 
+              plt.close('all')  
+              plt.yscale('log')  
+              plt.xscale('log')  
+              de = b[1::]-b[0:-1] 
+              plt.step((b1[1::]+b1[0:-1])/2.0,a1/de1)  
+              plt.step((b[1::]+b[0:-1])/2.0,a/de)  
+              plt.show()                                                                                                                                                                                         
+        Note:  the first 10,000 s of the simulation should be ignored because they could be affected by the initial conditions
+        
+        '''
+        num_nano = int(20.*dur/delay) #Here 2 is multiplied to increase the initial number of event sampling
+    
+        q0 = randomp(-alpha, num_nano, range_x=[q0min,q0max],seed = seed) #Events are selected from a random power-law distribution between q0min and q0max
+        #q0 = np.random.uniform(low=q0min, high=q0max, size=num_nano) # Events are selected from uniform random number between q0min and q0max
+    
+        time = np.arange(dur + 1)
+        if HeatingFunction is True : heat = np.zeros(int(dur + 1))
+    
+        delay_arr = np.zeros(num_nano - 1)
+        delay_good = np.zeros(num_nano - 1)
+        Prop_const = delay/Q0 #Proportionality constant. 
+        #seed = !NULL
+        if seed is not None : np.random.seed(seed)
+        t1 = int(5000*np.random.uniform(low=0.0, high=1.0, size=1)[0])   # first nanoflare begins randomly in the first 5000 s
+        if HeatingFunction is True :
+            for i in range(tau+1): heat[t1+i] = q0[0]*i/tau  #;                   triangular profile rise
+            for i in range(tau+1, (2*tau)+1): heat[t1+i] = q0[0]*(2.*tau - i)/tau  #;  decay
+    
+        Peak_heat = [q0[0]] #peak heating rate of each triangular profile
+        Peak_time = [t1+tau] #peak time
+    
+        k = 0
+        tnew = t1 + q0[0]*Prop_const
+        delay_arr[0] = tnew - t1
+    
+        while (tnew+2*tau < dur):
+            k = k + 1
+            if HeatingFunction is True :
+                for i in range(tau+1): heat[int(tnew+i)] = heat[int(tnew+i)] + q0[k]*i/tau
+                for i in range(tau+1, (2*tau)+1) : heat[int(tnew+i)] = heat[int(tnew+i)] + q0[k]*(2.*tau - i)/tau
+    
+            Peak_heat += [q0[k]]
+            Peak_time += [tnew+tau]
+            told = tnew
+            tnew = told + q0[k]*Prop_const
+            delay_arr[k] = tnew - told
+            if (tnew >= 10000): delay_good[k] = tnew - told
+    
+        if HeatingFunction is True :
+            h_cor = L_half*1.0e8 #5.e9  #;  coronal scale height
+            heat = heat + qbkg
+            mean_heat = np.mean(heat[10000:int(dur)])
+            Mean_energy_flux = mean_heat*h_cor #erg/cm2/s
+    
+        ss = np.where(delay_good != 0.)
+        delay_good = delay_good[ss]
+        mean_delay = np.mean(delay_good)
+        median_delay = np.median(delay_good)
+    
+        ss = np.where(delay_arr != 0.)
+        delay_arr = delay_arr[ss]
+        mean_delay_all = np.mean(delay_arr)
+        median_delay_all = np.median(delay_arr)
+        h_cor = L_half*1.0e8 #5.e9  #;  coronal scale height
+        if PrintOut == 'True':
+            print(' ')
+            if HeatingFunction is True : print('mean energy flux = ', Mean_energy_flux)
+            print('mean delay = ', mean_delay)
+            print('median delay = ', median_delay)
+            print(' ')
+            print('Including the first 10000 s:')
+            print('mean delay = ', mean_delay_all)
+            print('median delay = ', median_delay_all)
+    
+        if HeatingFunction is True :return time,heat,np.array(Peak_time),np.array(Peak_heat),Mean_energy_flux
+        else: return np.array(Peak_time),np.array(Peak_heat)
+
+    def loop_skeleton(self,Extrapolation_File=None,No_loops=None, Area_File=None,AspectRatio=None, Fixed_radious=None, L_min = None,L_max = None,Thresold_Phot_B = None,Minimum_height = None, ConstPoyntingFlux=None, CoronalBase = None):
+        config = self.config
+        if Extrapolation_File is None: Extrapolation_File = config['SetupSimulation']['LoopParamFile']
+        if os.path.isfile(Extrapolation_File) is False: raise Exception("%% simar_error : File not exist- "+Extrapolation_File)
+        if No_loops is None:
+            try:No_loops = config.getint('SetupSimulation','No_loops')
+            except: No_loops = None
+        if Area_File is None: Area_File = config.getboolean('SetupSimulation', 'Area_File')
+        if AspectRatio is None: AspectRatio = config.getfloat('SetupSimulation','AspectRatio') 
+        if Fixed_radious is None: Fixed_radious = config.getfloat('SetupSimulation','Fixed_radious')
+        if L_min is None: L_min = config.getfloat('SetupSimulation','L_min')
+        if L_max is None: L_max = config.getfloat('SetupSimulation','L_max')
+        if Thresold_Phot_B is None: Thresold_Phot_B = config.getfloat('SetupSimulation','Thresold_Phot_B')
+        if Minimum_height is None: Minimum_height = config.getfloat('SetupSimulation','Minimum_height')
+        if ConstPoyntingFlux is None: ConstPoyntingFlux = config.getboolean('SetupSimulation','ConstPoyntingFlux')
+        if CoronalBase is None: CoronalBase = config.getfloat('SetupSimulation','CoronalBase')
+        if CoronalBase is None: CoronalBase == 0.0
+
+
+        #It will return the loop half lenght and Average-mag-potential-E distribution accociated with each XBP and the corresponding magnetic free energy. 
+        # The number of loops will be such that the total area of all loops corresponds to the total area of the XBPs as read from "XBP_property_File".
+        '''
+        Extrapolation_dir -> the name of the extrapolation file got from 'Estimate_MagEnergy_LoopLengths.py'
+        No_loops -> Number of loops to be considered. If None, then it will be computed from total AR-area.
+        Area_File -> Area of individual XBPs will be read from the files store within the directory of Extrapolation_File directory for calculation. If Area_File != True, then the area store as the header of Extrapolation_File will be used (which is the area under the extrapolated regions estimated from the peripheri of loop-footpoints.) 
+        AspectRatio -> ratio between the loop length and diameter 
+        Fixed_radious -> Fixed radious of all the loops in Mm. If set 0, then it will not be used. The AspectRatio will use. 
+        L_min & L_max-> minimum & maximum loop length to be consider.    
+        Thresold_Phot_B -> Thresold phtospheric magnetic field for which the loops will be considered.
+    
+        Biswajit, 29.Jan.2022
+        Biswajit, 22.Mar.2022, added functionality for pojected loop-length
+        Biswajit, 29.Mar.2022, Removed the functionality of Area_File='n', Removed-- pojected loop-length.
+                               If ConstPoyntingFlux = True, it will return B_0, which is the magnetic field 
+                               at the base of the corona, as well as the average manetic field above "CoronalBase = 0.5 or 1.0 or 2.0 Mm".
+                               Added functionality "Minimum_height", the loops will be selected for which the height is >= Minimum_height.
+        Biswajit, 10.Sept.2023, added functionality of 'No_loops'
+        '''
+        #Loop_No,  Length, MagField, B_phot_pos, B_phot_neg = np.loadtxt(Extrapolation_File, unpack = True)    
+        #Loop_No,  Length, MagField, B_phot_pos, B_phot_neg, Length_projected = np.loadtxt(Extrapolation_File, unpack = True)
+        #print(Extrapolation_File)
+        loop_ind, Full_length, Bpos_foot, Bneg_foot, Avg_B, mod_B_ge0p5_pos, mod_B_ge0p5_neg, Avg_B_ge0p5, mod_B_ge1p0_pos, mod_B_ge1p0_neg, Avg_B_ge1p0, mod_B_ge2p0_pos, mod_B_ge2p0_neg, Avg_B_ge2p0,Loop_height = np.loadtxt(Extrapolation_File, unpack = True)
+        ind  = np.where((Bpos_foot > Thresold_Phot_B) & (Bneg_foot < -Thresold_Phot_B) & (Loop_height >= Minimum_height))[0]
+        Loop_No = loop_ind[ind]
+        Length = Full_length[ind]
+        Loop_height = Loop_height[ind]
+    
+        if ConstPoyntingFlux is True:
+            MagField = Avg_B[ind]
+            ind2 = np.where(MagField > 0.0)[0] #Neglect the small-loops which does-not satiesfy the criteria
+            MagField = MagField[ind2]
+            Length = Length[ind2]
+            Loop_No = Loop_No[ind2]
+        else:
+            if CoronalBase == 0.0:#photosphere
+                MagField = Avg_B[ind]
+                B_0 = (Bpos_foot[ind]+ abs(Bneg_foot[ind]))/2.0
+            if CoronalBase == 0.5:
+                MagField = Avg_B_ge0p5[ind]
+                B_0 = (mod_B_ge0p5_pos[ind]+ mod_B_ge0p5_neg[ind])/2.0
+            elif  CoronalBase == 1.0:
+                MagField = Avg_B_ge1p0[ind]
+                B_0 = (mod_B_ge1p0_pos[ind]+ mod_B_ge1p0_neg[ind])/2.0
+            elif  CoronalBase == 2.0:
+                MagField = Avg_B_ge2p0[ind]
+                B_0 = (mod_B_ge2p0_pos[ind]+ mod_B_ge2p0_neg[ind])/2.0
+            else: sys.exit('%% Error: data not exist')
+            ind2 = np.where(MagField > 0.0)[0] #Neglect the small-loops which does-not satiesfy the criteria
+            MagField = MagField[ind2]
+            B_0 = B_0[ind2]
+            Length = Length[ind2]
+            Loop_No = Loop_No[ind2]
+        L_half = []
+        Avg_B = []
+        B_Coronal_base = []
+        L_ind_ = [] #required for MaGIXS simulation
+        if No_loops is None: 
+            '''
+            if Area_File != True :
+                fi=open(Extrapolation_File,'r')
+                l=fi.readlines()[-10::]
+                pos_Area = float(find_str(l, '#Area_pos')[0].split('=')[-1])
+                neg_Area = float(find_str(l, '#Area_neg')[0].split('=')[-1])
+                Half_Area = (pos_Area+neg_Area)/2.0
+            else:
+            '''
+            fi=open(Extrapolation_File,'r')
+            l=fi.readlines()[0:3]
+            Area_full = float(find_str(l, 'Area(cm2)=')[0].split('=')[-1])
+            Half_Area = Area_full/2.0
+    
+            #print(Area_File1_str[0],xbp_no,Half_Area*2)
+            A=0.0
+            c=0
+            while A <= Half_Area:
+                if  Length[c] >= L_min and Length[c] <= L_max:
+                    if Fixed_radious == 0 :CS_area = 3.14* (Length[c]*1.0e8/(2.0*AspectRatio))**2
+                    else: CS_area = 3.14*Fixed_radious*Fixed_radious*1.0e16 #in cm2
+                    A += CS_area
+                    Avg_B += [MagField[c]]
+                    L_half += [Length[c]/2.0]
+                    L_ind_ += [Loop_No[c]]
+                    if ConstPoyntingFlux is not True: B_Coronal_base += [B_0[c]]
+                c+=1
+                if c == len(Length) : c = 0
+        else:
+            c = 0 
+            while c <= No_loops:
+                if  Length[c] >= L_min and Length[c] <= L_max:
+                    Avg_B += [MagField[c]]
+                    L_half += [Length[c]/2.0]
+                    L_ind_ += [Loop_No[c]]
+                    if ConstPoyntingFlux is not True: B_Coronal_base += [B_0[c]]
+                c+=1
+                if c == len(Length) : c = 0
+
+        if ConstPoyntingFlux is True:return np.array(L_half),np.array(Avg_B),np.array(L_ind_) #in Mm and G
+        else: return np.array(L_half),np.array(Avg_B), np.array(B_Coronal_base),np.array(L_ind_)
+    def Loop_avail_Erange(self,c,B_avg,tau_half,frac_minE = 0.01):
+        '''
+        It will return the minimum and maximum energy available within a loop.
+        '''
+        q0max = (c*B_avg)**2 / (tau_half*8.0*np.pi) #(erg/cm3/s) maximum heating rate that a loop can afforts
+        q0min = frac_minE*q0max #Consider as 1% of q0max
+        return q0max,q0min
+
+
