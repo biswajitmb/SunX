@@ -1,6 +1,6 @@
 # SunX
 
-Coronal loop simulations
+Coronal loop simulations (Detailed descriptions coming soon...)
 
 ![alt text](sunx.png)
 
