@@ -577,7 +577,7 @@ class fieldalign_model(object):
             EffT[ind_xx[i],ind_yy[i]] = sum(EM_i*(10**DEM_logT)) / sum(EM_i)
         return EffT
     
-    def classify_heating_ferq_ebtel_method2(self,EBTEL_results_dir,Tstart = None, Tstop=None, StoreOutputs = False, OutDir = None, OutFileName = None, N_loops=None, dt_half = 50,dt_tol = 25): #min_dT = 0.5, BKG_T = 0.5):
+    def classify_heating_ferq_ebtel_method(self,EBTEL_results_dir,Tstart = None, Tstop=None, StoreOutputs = False, OutDir = None, OutFileName = None, N_loops=None, dt_half = 50,dt_tol = 25): #min_dT = 0.5, BKG_T = 0.5):
         '''
          **This function is used in 2024 paper
          Purpose: Classify the events for each loops from EBTEL average temperature profile and store outputs in a fits file.
@@ -603,9 +603,9 @@ class fieldalign_model(object):
         
         #min_dT = min_dT*1.0e6
         #BKG_T = BKG_T * 1.0e6
-        HF_Avg = np.zeros([3,N_loops]) #['energy_rate','delay_time']
-        LF_Avg = np.zeros([3,N_loops])
-        IF_Avg = np.zeros([3,N_loops])
+        HF_Avg = np.zeros([4,N_loops]) #['energy_rate','delay_time']
+        LF_Avg = np.zeros([4,N_loops])
+        IF_Avg = np.zeros([4,N_loops])
         loop_INDX = []
         L_halfs = []
         for i in range(N_loops):
@@ -738,16 +738,19 @@ class fieldalign_model(object):
             results['HF']['numbers'] = HF_Avg[0,:]
             results['HF']['avg_energy'] = HF_Avg[1,:]
             results['HF']['delay_time'] = HF_Avg[2,:]
+            results['HF']['fract_time'] = HF_Avg[3,:]
             results['HF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
             results['LF'] ={}
             results['LF']['numbers'] =    LF_Avg[0,:]
             results['LF']['avg_energy'] = LF_Avg[1,:]
             results['LF']['delay_time'] = LF_Avg[2,:]
+            results['LF']['fract_time'] = LF_Avg[3,:]
             results['LF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
             results['IF'] ={}
             results['IF']['numbers'] =    IF_Avg[0,:]
             results['IF']['avg_energy'] = IF_Avg[1,:]
             results['IF']['delay_time'] = IF_Avg[2,:]
+            results['IF']['fract_time'] = IF_Avg[3,:]
             results['IF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
             save_obj(results,os.path.join(OutDir,OutFileName))
         print(i)
