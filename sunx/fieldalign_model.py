@@ -742,7 +742,7 @@ class fieldalign_model(object):
              ###BKG_T -> Loop background temperature. If after an event no event will be there then loop will sattle with this temperature
         '''
         #L_half = Full_length_Mm/2
-
+   
         EBTEL_OutFiles = glob.glob(os.path.join(EBTEL_results_dir,'*.pkl'))
         EBTEL_OutFiles = sorted(EBTEL_OutFiles)
 
@@ -750,7 +750,7 @@ class fieldalign_model(object):
             N_loops = len(EBTEL_OutFiles)
             print('%SunX_massege : Exceeding maximum available loops. Set to maximum number of loops ->'+format('%d'%N_loops))
         if Tstart is None: Tstart = 0
-
+        
         #min_dT = min_dT*1.0e6
         #BKG_T = BKG_T * 1.0e6
         HF_Avg = np.zeros([3,N_loops]) #['energy_rate','delay_time']
@@ -765,6 +765,7 @@ class fieldalign_model(object):
             L_halfs += [results['Loop_half_length']]
             time = results['time']
             if Tstop is None: Tstop = time[-1]
+            Simulation_time = Tstop-Tstart
             ind = np.where((time>Tstart)&(time<Tstop))
             ind2 = np.where((results['peak_heating_time']>Tstart)&(results['peak_heating_time']<Tstop))
             time = time[ind]
@@ -865,9 +866,12 @@ class fieldalign_model(object):
                         #plt.plot(time_max,T_max,'o',color='k') #IF
                     #plt.plot(time_rep,T_rep,'^b')
                     #elif T_rep <= 0.61*peak_T[iii] and T_rep >= 0.14*peak_T[iii]: plt.plot(peak_times[iii],peak_T[iii],'o',color='k') #IF
-                if len(HF) > 0 :HF_Avg[0,i] = len(HF); HF_Avg[1,i] = np.average(np.array(HF)) ; HF_Avg[2,i] = np.average(HF_dt)
-                if len(LF) > 0 :LF_Avg[0,i] = len(LF); LF_Avg[1,i] = np.average(np.array(LF)) ; LF_Avg[2,i] = np.average(LF_dt)
-                if len(IF) > 0 :IF_Avg[0,i] = len(IF);IF_Avg[1,i] = np.average(IF) ; IF_Avg[2,i] = np.average(IF_dt)
+                #if len(HF) > 0 :HF_Avg[0,i] = len(HF); HF_Avg[1,i] = np.average(np.array(HF)) ; HF_Avg[2,i] = np.average(HF_dt)
+                #if len(LF) > 0 :LF_Avg[0,i] = len(LF); LF_Avg[1,i] = np.average(np.array(LF)) ; LF_Avg[2,i] = np.average(LF_dt)
+                #if len(IF) > 0 :IF_Avg[0,i] = len(IF);IF_Avg[1,i] = np.average(IF) ; IF_Avg[2,i] = np.average(IF_dt)
+                if len(HF) > 0 :HF_Avg[0,i] = len(HF)/Simulation_time; HF_Avg[1,i] = np.sum(np.array(HF))*dt_half/Simulation_time ; HF_Avg[2,i] = np.sum(HF_dt)/Simulation_time 
+                if len(LF) > 0 :LF_Avg[0,i] = len(LF)/Simulation_time; LF_Avg[1,i] = np.sum(np.array(LF))*dt_half/Simulation_time ; LF_Avg[2,i] = np.sum(LF_dt)/Simulation_time 
+                if len(IF) > 0 :IF_Avg[0,i] = len(IF)/Simulation_time;IF_Avg[1,i] = np.sum(np.array(IF))*dt_half/Simulation_time ; IF_Avg[2,i] = np.sum(IF_dt)/Simulation_time
                 #else: print('Skiping loop No:',loop_INDX[i],len(peak_times),len(peak_heating_time))
                 #plt.show()
                 #print('LF: ',LF_Avg[0,i],LF_Avg[1,i],LF_Avg[2,i])
