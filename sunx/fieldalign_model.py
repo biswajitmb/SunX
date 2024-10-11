@@ -608,6 +608,7 @@ class fieldalign_model(object):
         IF_Avg = np.zeros([4,N_loops])
         loop_INDX = []
         L_halfs = []
+        Eff_simulation_time = []
         for i in range(N_loops):
             results = load_obj(EBTEL_OutFiles[i][0:-4])
             loop_INDX += [results['loop_index']]
@@ -615,7 +616,7 @@ class fieldalign_model(object):
             L_halfs += [results['Loop_half_length']]
             time = results['time']
             if Tstop is None: Tstop = time[-1]
-            Simulation_time = Tstop-Tstart
+            Actual_simulation_time = Tstop-Tstart
             ind = np.where((time>Tstart)&(time<Tstop))
             ind2 = np.where((results['peak_heating_time']>Tstart)&(results['peak_heating_time']<Tstop))
             time = time[ind]
@@ -697,12 +698,14 @@ class fieldalign_model(object):
                 #plt.ylabel('Avg. T (K)')
                 #if len(peak_times) == len(peak_heating_time): 
                 HF = []; HF_dt = []; LF = [] ; IF = [] ; IF_dt = []; LF_dt = []
+                Simulation_time = 0
                 for iii in range(len(peak_heating_time)-1):
                     time_rep = peak_heating_time[iii+1]-dt_half
                     if time_rep < time[0]: time_rep = peak_heating_time[iii+1]
                     time_max = peak_heating_time[iii]+dt_tol
                     if time_max > time[-1]: time_max = peak_heating_time[iii]
                     dt = peak_heating_time[iii+1] - peak_heating_time[iii]
+                    Simulation_time += np.sum(dt)
                     T_rep =  Avg_temp_intpFunc(time_rep)#temperature @ time of next event start
                     T_max = Avg_temp_intpFunc(time_max)
                     if T_rep > 0.61*T_max : 
@@ -719,9 +722,10 @@ class fieldalign_model(object):
                 #if len(HF) > 0 :HF_Avg[0,i] = len(HF); HF_Avg[1,i] = np.average(np.array(HF)) ; HF_Avg[2,i] = np.average(HF_dt)
                 #if len(LF) > 0 :LF_Avg[0,i] = len(LF); LF_Avg[1,i] = np.average(np.array(LF)) ; LF_Avg[2,i] = np.average(LF_dt)
                 #if len(IF) > 0 :IF_Avg[0,i] = len(IF);IF_Avg[1,i] = np.average(IF) ; IF_Avg[2,i] = np.average(IF_dt)
-                if len(HF) > 0 :HF_Avg[0,i] = len(HF)/Simulation_time; HF_Avg[1,i] = np.sum(np.array(HF))*dt_half/Simulation_time ; HF_Avg[2,i] = np.average(HF_dt) ;HF_Avg[3,i] = np.sum(HF_dt)/Simulation_time
-                if len(LF) > 0 :LF_Avg[0,i] = len(LF)/Simulation_time; LF_Avg[1,i] = np.sum(np.array(LF))*dt_half/Simulation_time ; LF_Avg[2,i] = np.average(LF_dt) ;LF_Avg[3,i] = np.sum(LF_dt)/Simulation_time
-                if len(IF) > 0 :IF_Avg[0,i] = len(IF)/Simulation_time;IF_Avg[1,i] = np.sum(np.array(IF))*dt_half/Simulation_time ; IF_Avg[2,i] = np.average(IF_dt) ;IF_Avg[3,i] = np.sum(IF_dt)/Simulation_time
+                Eff_simulation_time += [Simulation_time]
+                if len(HF) > 0 :HF_Avg[0,i] = len(HF); HF_Avg[1,i] = np.sum(np.array(HF))*dt_half ; HF_Avg[2,i] = np.average(HF_dt) ;HF_Avg[3,i] = np.sum(HF_dt)
+                if len(LF) > 0 :LF_Avg[0,i] = len(LF); LF_Avg[1,i] = np.sum(np.array(LF))*dt_half ; LF_Avg[2,i] = np.average(LF_dt) ;LF_Avg[3,i] = np.sum(LF_dt)
+                if len(IF) > 0 :IF_Avg[0,i] = len(IF);IF_Avg[1,i] = np.sum(np.array(IF))*dt_half ; IF_Avg[2,i] = np.average(IF_dt) ;IF_Avg[3,i] = np.sum(IF_dt)
                 #else: print('Skiping loop No:',loop_INDX[i],len(peak_times),len(peak_heating_time))
                 #plt.show()
                 #print('LF: ',LF_Avg[0,i],LF_Avg[1,i],LF_Avg[2,i])
@@ -734,24 +738,26 @@ class fieldalign_model(object):
             results = {}
             results['loop_INDX'] = loop_INDX
             results['L_half'] = L_halfs
+            results['eff_simulation_time'] = Eff_simulation_time
+            results['actual_simulation_time'] = Actual_simulation_time
             results['HF'] ={}
             results['HF']['numbers'] = HF_Avg[0,:]
             results['HF']['avg_energy'] = HF_Avg[1,:]
             results['HF']['delay_time'] = HF_Avg[2,:]
             results['HF']['fract_time'] = HF_Avg[3,:]
-            results['HF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
+            results['HF']['units'] = 'avg_energy: ergs/cm3, delay_time: seconds'
             results['LF'] ={}
             results['LF']['numbers'] =    LF_Avg[0,:]
             results['LF']['avg_energy'] = LF_Avg[1,:]
             results['LF']['delay_time'] = LF_Avg[2,:]
             results['LF']['fract_time'] = LF_Avg[3,:]
-            results['LF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
+            results['LF']['units'] = 'avg_energy: ergs/cm3, delay_time: seconds'
             results['IF'] ={}
             results['IF']['numbers'] =    IF_Avg[0,:]
             results['IF']['avg_energy'] = IF_Avg[1,:]
             results['IF']['delay_time'] = IF_Avg[2,:]
             results['IF']['fract_time'] = IF_Avg[3,:]
-            results['IF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
+            results['IF']['units'] = 'avg_energy: ergs/cm3, delay_time: seconds'
             save_obj(results,os.path.join(OutDir,OutFileName))
         print(i)
         return loop_INDX, L_halfs, HF_Avg,IF_Avg,LF_Avg
