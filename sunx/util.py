@@ -114,8 +114,8 @@ def select_ar_onclick(event,fig,AllAxes,f_Area,amap,hmap,outfile_dir='./',choose
      if event.button == 3: #Right click
          ix, iy = event.xdata, event.ydata
          b=event.inaxes.format_coord(ix,iy).split( )#transform to projected frame.
-         ix_t = int(b[0][0:-1])
-         iy_t = int(b[1][0:-1])
+         ix_t = int(b[0][0:-1].replace('−', '-'))
+         iy_t = int(b[1][0:-1].replace('−', '-'))
          if choose_FOV_center is False:
              print(b)
              if nstart == 1:
@@ -217,8 +217,8 @@ def select_seed_regions(event,fig,AllAxes):
     if event.button == 3: #Right click
         ix, iy = event.xdata, event.ydata
         b=event.inaxes.format_coord(ix,iy).split( )#transform to projected frame.
-        ix_t = int(b[0][0:-1])
-        iy_t = int(b[1][0:-1])
+        ix_t = int(b[0][0:-1].replace('−', '-'))
+        iy_t = int(b[1][0:-1].replace('−', '-'))
         print(ix_t, iy_t)
         xi_all += [ix_t]
         yi_all += [iy_t]

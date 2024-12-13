@@ -1,15 +1,15 @@
 [SelectEvent] 
-data_dir = /Users/bmondal/BM_Works/SOL20150622T1830/data
-event_dateTime = 2015-06-22T17:36:00
-aia_filter = 94
-FOV = [[0,100],[150,250]] #not implemented properly
-remove_level1_data = False #not implemented properly
+data_dir = sample_data
+event_dateTime = 2020-03-15T03:00:00
+aia_filter = 193
+FOV = [[568,-538],[718,-388]] #not implemented yet
+remove_level1_data = False #not implemented yet
 NumCore = 0
 
 [Heating]
 qbkg = 1.0e-5
 tau=50
-dur=20000
+dur=10000
 q0min=0.02
 q0max=2.0
 Fp=0.2

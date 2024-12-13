@@ -577,7 +577,157 @@ class fieldalign_model(object):
             EffT[ind_xx[i],ind_yy[i]] = sum(EM_i*(10**DEM_logT)) / sum(EM_i)
         return EffT
     
-    def classify_heating_ferq_ebtel_method(self,EBTEL_results_dir,Tstart = None, Tstop=None, StoreOutputs = False, OutDir = None, OutFileName = None, N_loops=None, dt_half = 50,dt_tol = 25): #min_dT = 0.5, BKG_T = 0.5):
+    def classify_heating_ferq_ebtel(self,EBTEL_results_dir,Tstart = None, Tstop=None, StoreOutputs = False, OutDir = None, OutFileName = None, N_loops=None, min_dT = 0.5, BKG_T = 0.5):
+        '''
+         Purpose: Classify the events for each loops from EBTEL average temperature profile and store outputs in a fits file.
+             EBTEL_results_dir -> directory of the EBTEL outputs for all the loops
+             Tstart -> Start time of the simulation to be considered.
+             Tstop -> Stop time of the simulation outputs to be considered
+             N_loops -> Number of loops to be considered from 'LoopParFile'. If none all the loops will be considered.
+             min_dT -> minimum temperature (MK) difference between temperature peek and dip, above which a event would be considered.
+             BKG_T -> Loop background temperature. If after an event no event will be there then loop will sattle with this temperature
+        '''
+        #L_half = Full_length_Mm/2
+
+        EBTEL_OutFiles = glob.glob(os.path.join(EBTEL_results_dir,'*.pkl'))
+        EBTEL_OutFiles = sorted(EBTEL_OutFiles)
+
+        if N_loops > len(EBTEL_OutFiles) :
+            N_loops = len(EBTEL_OutFiles)
+            print('%SunX_massege : Exceeding maximum available loops. Set to maximum number of loops ->'+format('%d'%N_loops))
+        if Tstart is None: Tstart = 0
+
+        min_dT = min_dT*1.0e6
+        BKG_T = BKG_T * 1.0e6
+        HF_Avg = np.zeros([3,N_loops]) #['energy_rate','delay_time']
+        LF_Avg = np.zeros([3,N_loops])
+        IF_Avg = np.zeros([3,N_loops])
+        loop_INDX = []
+        L_halfs = []
+        for i in range(N_loops):
+            results = load_obj(EBTEL_OutFiles[i][0:-4])
+            loop_INDX += [results['loop_index']]
+            L_halfs += [results['Loop_half_length']]  
+            time = results['time']
+            if Tstop is None: Tstop = time[-1]
+            ind = np.where((time>Tstart)&(time<Tstop))
+            ind2 = np.where((results['peak_heating_time']>Tstart)&(results['peak_heating_time']<Tstop))
+            time = time[ind]
+            peak_heating_time = results['peak_heating_time'][ind2]
+            peak_heating_rate = results['peak_heating_rate'][ind2]
+        
+            Avg_temp = results['electron_temperature'][ind] #in K
+            Avg_density = results['density'][ind] #cm^-3
+        
+            ind = np.where((Avg_temp != np.nan)&(Avg_temp>0))
+            Avg_temp = Avg_temp[ind]
+            Avg_density = Avg_density[ind]
+            time = time[ind]
+        
+            if len(Avg_temp) > 1:
+                
+                #Find the temperature peaks:
+                peaks_ind, _ = find_peaks(Avg_temp, distance=1)  # Adjust distance as needed
+                peak_T = Avg_temp[peaks_ind]
+                peak_n = Avg_density[peaks_ind]
+                peak_times = time[peaks_ind]
+
+                good_peak_ind = np.where(peak_T > BKG_T) #Consider all the peaks which are above BKG T
+                peak_T = peak_T[good_peak_ind]
+                peak_n = peak_n[good_peak_ind]
+                peak_times = peak_times[good_peak_ind]
+                peaks_ind = peaks_ind[good_peak_ind]
+
+                #Consider the loops having atleast two events:
+                if len(peak_T) > 1:
+                    #Find the temperature dips :
+                    dip_times = [] # Finding dip times of the temperature minimum after each temperature peaks
+                    dip_T = []
+                    for ii in range(len(peaks_ind) - 1):
+                        start_idx = peaks_ind[ii]
+                        end_idx = peaks_ind[ii + 1]
+                        valley_idx = np.argmin(Avg_temp[start_idx:end_idx]) + start_idx
+                        dip_times.append(time[valley_idx])
+                        dip_T.append(Avg_temp[valley_idx])
+
+                    dip_times = np.array(dip_times)
+                    dip_T = np.array(dip_T)
+                    delta_T = peak_T[0:-1] - dip_T
+                    if len(peak_heating_rate) < len(dip_T)+1 :
+                        ind_good = np.where(delta_T > min_dT)
+                        dip_T = dip_T[ind_good]
+                        dip_times = dip_times[ind_good]
+                        peak_times = np.concatenate((peak_times[ind_good],[peak_times[-1]])) #Remove some discrepency in the peek estimations
+                        peak_T = np.concatenate((peak_T[ind_good],[peak_T[-1]]))
+                   
+                    LF_ind = np.where(dip_T <= BKG_T)
+                    LF_ = list(dip_T[LF_ind])
+                    #print(EBTEL_OutFiles[i][0:-4],results['loop_index'],peak_heating_rate,LF_ind)
+                    peak_heating_rate_LF_ = peak_heating_rate[LF_ind]
+                    HF_ind = np.where(dip_T > BKG_T)
+                    if len(HF_ind[0]) >0: 
+                        HF = peak_heating_rate[HF_ind]; 
+                        HF_dt = peak_times[tuple(np.array(HF_ind)+1)] - peak_times[HF_ind]
+                        HF_Avg[0,i] = len(HF); HF_Avg[1,i] = np.average(HF) ; HF_Avg[2,i] = np.average(HF_dt)
+                    if len(LF_) > 0:
+                        t_cool__ = dip_times[LF_ind] - peak_times[LF_ind] #cooling time
+                        dt_peek = peak_times[tuple(np.array(LF_ind)+1)] - peak_times[LF_ind] #Repetation time
+                        LF = [] ; IF = [] ; IF_dt = []; LF_dt = []
+                        for kk in range(len(t_cool__)):
+                            if dt_peek[kk] > 2*t_cool__[kk]: 
+                                LF += [peak_heating_rate_LF_[kk]]
+                                LF_dt += [dt_peek[kk]]
+                            else: 
+                                IF += [peak_heating_rate_LF_[kk]]
+                                IF_dt += [dt_peek[kk]]
+                        if len(LF) > 0 :LF_Avg[0,i] = len(LF); LF_Avg[1,i] = np.average(np.array(LF)) ; LF_Avg[2,i] = np.average(LF_dt)
+                        if len(IF) > 0 :IF_Avg[0,i] = len(IF);IF_Avg[1,i] = np.average(IF) ; IF_Avg[2,i] = np.average(IF_dt)
+                    '''
+                    print('LF: ',LF_Avg[0,i],LF_Avg[1,i],LF_Avg[2,i])
+                    print('IF: ',IF_Avg[0,i],IF_Avg[1,i],IF_Avg[2,i])
+                    print('HF: ',HF_Avg[0,i],HF_Avg[1,i],HF_Avg[2,i])
+                    print('\n')
+                    '''
+                    ''' 
+                    #plt.plot(time,Avg_density)
+                    ##plt.plot(peak_dens_times, peak_n, "x", label='Peaks')
+                    #ax = plt.twinx()
+                    plt.plot(time,Avg_temp,color='r')
+                    plt.plot([time[0],time[-1]],[BKG_T]*2)
+                    plt.plot(peak_times, peak_T, "x", label='Peaks',color='r')
+                    plt.plot(dip_times,dip_T,'*b')
+                    ## Plotting dip times
+                    ##plt.plot(dip_times, [Avg_temp[np.argmin(Avg_temp[start_idx:end_idx]) + start_idx] for start_idx, _ in zip(peaks_ind[:-1], peaks_ind[1:])], "o", label='Dips')
+                    plt.xlabel('Time (s)')
+                    plt.ylabel('Avg. T (K)')
+                    plt.show()
+                    '''
+        if StoreOutputs is True:
+            if OutDir is None: print('%% SunX error: Define a valid Output directory')
+            if OutFileName is None: OutFileName = 'test_event_classifications'
+            results = {}
+            results['loop_INDX'] = loop_INDX
+            results['L_half'] = L_halfs 
+            results['HF'] ={}
+            results['HF']['numbers'] = HF_Avg[0,:]
+            results['HF']['avg_energy'] = HF_Avg[1,:]
+            results['HF']['delay_time'] = HF_Avg[2,:]
+            results['HF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
+            results['LF'] ={}
+            results['LF']['numbers'] =    LF_Avg[0,:]
+            results['LF']['avg_energy'] = LF_Avg[1,:]
+            results['LF']['delay_time'] = LF_Avg[2,:]
+            results['LF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
+            results['IF'] ={}
+            results['IF']['numbers'] =    IF_Avg[0,:]
+            results['IF']['avg_energy'] = IF_Avg[1,:]
+            results['IF']['delay_time'] = IF_Avg[2,:]
+            results['IF']['units'] = 'avg_energy: ergs/cm3/s, delay_time: seconds'
+            save_obj(results,os.path.join(OutDir,OutFileName))
+        print(i)
+        return loop_INDX, L_halfs, HF_Avg,IF_Avg,LF_Avg
+    
+    def classify_heating_ferq_ebtel_method2(self,EBTEL_results_dir,Tstart = None, Tstop=None, StoreOutputs = False, OutDir = None, OutFileName = None, N_loops=None, dt_half = 50,dt_tol = 25): #min_dT = 0.5, BKG_T = 0.5):
         '''
          **This function is used in 2024 paper
          Purpose: Classify the events for each loops from EBTEL average temperature profile and store outputs in a fits file.
@@ -592,15 +742,14 @@ class fieldalign_model(object):
              ###BKG_T -> Loop background temperature. If after an event no event will be there then loop will sattle with this temperature
         '''
         #L_half = Full_length_Mm/2
-   
+
         EBTEL_OutFiles = glob.glob(os.path.join(EBTEL_results_dir,'*.pkl'))
         EBTEL_OutFiles = sorted(EBTEL_OutFiles)
-
         if N_loops > len(EBTEL_OutFiles) :
             N_loops = len(EBTEL_OutFiles)
             print('%SunX_massege : Exceeding maximum available loops. Set to maximum number of loops ->'+format('%d'%N_loops))
         if Tstart is None: Tstart = 0
-        
+
         #min_dT = min_dT*1.0e6
         #BKG_T = BKG_T * 1.0e6
         HF_Avg = np.zeros([4,N_loops]) #['energy_rate','delay_time']
@@ -705,9 +854,9 @@ class fieldalign_model(object):
                     time_max = peak_heating_time[iii]+dt_tol
                     if time_max > time[-1]: time_max = peak_heating_time[iii]
                     dt = peak_heating_time[iii+1] - peak_heating_time[iii]
-                    Simulation_time += np.sum(dt)
                     T_rep =  Avg_temp_intpFunc(time_rep)#temperature @ time of next event start
                     T_max = Avg_temp_intpFunc(time_max)
+                    Simulation_time += np.sum(dt)
                     if T_rep > 0.61*T_max : 
                         HF += [peak_heating_rate[iii]]; HF_dt += [dt]
                         #plt.plot(time_max,T_max,'o',color='m') #HF
