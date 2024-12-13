@@ -2,7 +2,7 @@
 
 Coronal loop simulations (Detailed descriptions coming soon...)
 
-![alt text](sunx.png)
+![alt text](SunX_diagram.pdf)
 
 ## Install
 
