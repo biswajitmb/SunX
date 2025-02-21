@@ -14,7 +14,11 @@ $ git clone https://github.com/biswajitmb/SunX.git
 $ cd SunX
 $ pip install .
 ```
+
 ## References
+
 [Mondal et. al., ApJ, 980:75 2025](https://doi.org/10.3847/1538-4357/ada3d6)
+
 [Mondal et. al., ApJ, 967:23 2024](https://doi.org/10.3847/1538-4357/ad2766)
+
 [Mondal et. al., ApJ, 945:37 2023](https://doi.org/10.3847/1538-4357/acb8bb)
