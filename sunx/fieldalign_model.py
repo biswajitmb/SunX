@@ -15,6 +15,13 @@ from scipy.optimize import curve_fit
 
 from sunx.util_ebtel import run_ebtel, read_xml
 
+#For latest EBTELplusplus v0.5 on May.01.2026
+import astropy.units as u
+from astropy.visualization import quantity_support
+import ebtelplusplus
+from ebtelplusplus.models import DemModel, HeatingModel, TriangularHeatingEvent, HeatingEvent, PhysicsModel
+quantity_support()
+
 #import warnings
 #warnings.simplefilter('ignore')
 #import logging, sys
@@ -24,11 +31,133 @@ mul.set_start_method('fork',force=True)#to resolve the issue with mac and multip
 
 class fieldalign_model(object):
     def __init__(self,configfile=None):
-        if os.path.isfile(configfile) is False:
-            raise Exception("%% simar_error : Congig-File not exist- "+configfile)
-        config = configparser.ConfigParser()
-        config.read(configfile)
-        self.config = config
+        if configfile != 'NA':
+            if os.path.isfile(configfile) is False:
+                raise Exception("%% simar_error : Congig-File not exist- "+configfile)
+            config = configparser.ConfigParser()
+            config.read(configfile)
+            self.config = config
+
+    def run_ebtelv0p5_general(self, 
+        L_half, 	#Loop half length in Mm
+        Peak_heat,	#heating energy distribution
+        Peak_time,	#delay times
+        BKG_T=0.3e6, 	#Average loop background temperature in Kelvin
+        tau=50,
+        SimulationTime=10000,
+        electron_ion_partition = 1,
+        dem_logTnbins = 20,
+        dem_logTmin = 4.5,
+        dem_logTmax = 7.5,
+        OutDir = './',
+        OutFile_name = 'test',
+        #Out_phys = False,
+        partition = 1,
+        saturation_limit=None,
+        force_single_fluid=True,
+        c1_conduction=6.0,
+        c1_radiation=0.6,
+        use_c1_gravity_correction=True,
+        use_c1_radiation_correction=True,
+        surface_gravity=1.0,
+        helium_to_hydrogen_ratio=0.075,
+        radiative_loss= 'photospheric',#'power_law', 
+        loop_length_ratio_tr_total=0.15,
+        area_ratio_tr_corona=1.0,
+        area_ratio_0_corona=1.0 
+        ):
+        #EBTEL_dir=self.EBTEL_dir; EBTEL_ConfigFle = self.EBTEL_ConfigFle; Out_phys = self.Out_phys
+
+        #OutFile_name = 'EBTEL_Lhalf_'+format('%d'%L_half)+'_Lind_'#+ind_6(L_ind_no[l_ind])
+
+        Store_outputs = True
+
+        ### Configure and run ebtel++
+        physics = PhysicsModel(
+            saturation_limit=saturation_limit, 
+            force_single_fluid=force_single_fluid, 
+            c1_conduction=c1_conduction, 
+            c1_radiation=c1_radiation, 
+            use_c1_gravity_correction=use_c1_gravity_correction, 
+            use_c1_radiation_correction=use_c1_radiation_correction, 
+            surface_gravity=surface_gravity, 
+            helium_to_hydrogen_ratio=helium_to_hydrogen_ratio, 
+            radiative_loss= radiative_loss,#'power_law', 
+            loop_length_ratio_tr_total=loop_length_ratio_tr_total, 
+            area_ratio_tr_corona=area_ratio_tr_corona, 
+            area_ratio_0_corona=area_ratio_0_corona
+            )
+        #Create EBTEL heating train
+        events = []
+        tau_half = tau / 2
+        time_start = 0 * u.s
+        for event_ind in range(len(Peak_time)):
+            Rise_Start = Peak_time[event_ind] - tau_half #+BKG_heating_time
+            events.append(HeatingEvent(Rise_Start*u.s,
+                                       tau*u.s,
+                                       tau_half*u.s,
+                                       tau_half*u.s,
+                                       Peak_heat[event_ind]*u.Unit('erg cm-3 s-1')
+            ))
+        heating = HeatingModel(
+                  background = H_back_loopTop(L_half*1.0e8,BKG_T)*u.Unit('erg cm-3 s-1'),
+                  partition = partition, #Only electron heating
+                  events = events) 
+
+        dem_model = DemModel(
+            calculate_dem=True,
+            use_new_tr_method=True,
+            temperature_bins=dem_logTnbins,
+            temperature_min= (10**dem_logTmin)*u.K,
+            temperature_max= (10**dem_logTmax)*u.K
+            )
+
+        #base['use_flux_limiting'] = True
+        #base['saturation_limit'] = 0.5 #Flux limiter, f in section 2.1 of Barnes et al. (2016)
+
+        res = ebtelplusplus.run(SimulationTime*u.s,
+                           L_half*u.Mm,
+                           heating=heating,
+                           physics = physics,
+                           dem=dem_model
+                          )
+
+        #EBTEL outputs                
+        results = {}
+        results['time'] = res.time
+        results['electron_temperature'] = res.electron_temperature
+        results['ion_temperature'] = res.ion_temperature
+        results['density'] = res.density
+        results['electron_pressure'] = res.electron_pressure
+        results['ion_pressure'] = res.ion_pressure
+        #results['total_pressure'] = res.total_pressure
+        results['velocity'] = res.velocity
+        results['heat'] = res.heat
+        results['electron_thermal_conduction'] = res.electron_thermal_conduction
+        results['ion_thermal_conduction'] = res.ion_thermal_conduction
+        results['radiative_loss'] = res.radiative_loss
+        results['tr_corona_radiative_loss_ratio'] = res.tr_corona_radiative_loss_ratio
+        results['dem_temperature'] = res.dem_temperature
+        results['dem_tr'] = res.dem_tr
+        results['dem_corona'] = res.dem_corona
+        results['inputs'] = res.inputs
+        '''
+        if Out_phys is False:
+            results{'ion_temperature'} = 0 #results['ion_temperature'][ind1:ind2]
+            results{'velocity'} = 0
+            results{'ion_pressure'} = 0
+            results{'electron_pressure'} = 0
+        '''
+        results['Loop_half_length'] = L_half
+        #results['Loop_half_length_projected'] = L_half_projected[l_ind]
+        #results['loop_index'] = L_ind_no[l_ind]
+        results['peak_heating_rate'] = Peak_heat
+        results['peak_heating_time'] = Peak_time
+        results['tau_half'] = tau_half
+        if Store_outputs is True :
+            # Store the outputs of each-loop
+            save_obj(results, os.path.join(OutDir,OutFile_name))
+        return res
 
 
     def iteration_over_loops_ebtel(self, l_ind):
