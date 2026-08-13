@@ -13,7 +13,7 @@ from astropy.time import Time
 import numpy as np
 import os,sys,glob
 import sunpy.map
-from aiapy.calibrate import register, update_pointing,fix_observer_location
+from aiapy.calibrate import register, update_pointing
 import matplotlib.pyplot as plt
 from datetime import datetime
 from astropy.io import fits
@@ -110,7 +110,7 @@ class fieldextrap(object):
         self.afname = AIA_Image ; self.hfname = HMI_Mag
         m = sunpy.map.Map(os.path.join(adir,AIA_Image))
         m_updated_pointing = update_pointing(m)
-        m_observer_fixed = fix_observer_location(m_updated_pointing)
+        #m_observer_fixed = fix_observer_location(m_updated_pointing)
         m_registered = register(m_updated_pointing)
         #m_normalized = normalize_exposure(m_registered) #not part of level 1.5 “prep” data. It will convert the data in unit DN/px/ s.
         m_registered.save(os.path.join(adir,'AIA_lev1.5_'+ind_4(aia_filt)+'_'+format('%0.4d'%datetim.year)+format('%0.2d'%datetim.month)+format('%0.2d'%datetim.day)+'T'+format('%0.2d'%datetim.hour)+format('%0.2d'%datetim.minute)+format('%0.2d'%datetim.second)+'.fits'),overwrite='True')
@@ -312,7 +312,7 @@ class fieldextrap(object):
             #convert lavel-1.5
             m = sunpy.map.Map(afname)
             m_updated_pointing = update_pointing(m)
-            m_observer_fixed = fix_observer_location(m_updated_pointing)
+            #m_observer_fixed = fix_observer_location(m_updated_pointing)
             m_registered = register(m_updated_pointing)
             #m_normalized = normalize_exposure(m_registered) #not part of level 1.5 “prep” data. It will convert the data in unit DN/px/ s.
             os.remove(afname)
