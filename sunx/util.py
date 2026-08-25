@@ -869,6 +869,7 @@ def nanoflareprof_logNormal(
     qbkg=1.0e-5,
     tau_half=20,
     dur=60000,
+    num_nano=None,
     HeatingFunction = False,
     seed = None,
     Test=False,
@@ -892,6 +893,15 @@ def nanoflareprof_logNormal(
                     min_delay, max_delay, broken_delay, 
                     ngrid,
                     ]
+      num_nano : int or None
+        If None:
+            Simulation is run for `dur` seconds.
+
+        If integer:
+            Exactly `num_nano` nanoflares are generated and the
+            required simulation duration is determined automatically.
+
+
     Outputs:
       Peak_time - peak time of the events.
       Peak_heat - peak heating rate (erg cm^-3 s^-1)
@@ -901,8 +911,30 @@ def nanoflareprof_logNormal(
                                                                                                                                                                                             
     '''
 
+    # ---------------------------------------------------------
+    # Random seed
+    # ---------------------------------------------------------
+    if seed is not None:
+        np.random.seed(seed)
+
     #Select event energy are selected from log-normal distribution in the unit of erg/cm2
-    target_size = int(dur)
+
+    # =========================================================
+    # Decide how many q0 values need to be generated
+    # =========================================================
+
+    if num_nano is not None:
+        num_nano = int(num_nano)
+        if num_nano < 1:
+            raise ValueError("num_nano must be >= 1")
+        # We know exactly how many events we need
+        target_size = num_nano
+    else:
+        target_size = int(dur)
+
+    # =========================================================
+    # Generate nanoflare amplitudes
+    # =========================================================
     q0 = np.array([])  # Initialize an empty array
     while len(q0) < target_size:
         needed = target_size - len(q0)
@@ -912,6 +944,10 @@ def nanoflareprof_logNormal(
     q0 = q0[:target_size]
 
     #Select random delay between two events from a minimum to maximum values from a mixed distribution
+
+    # =========================================================
+    # Generate delay times
+    # =========================================================
 
     delay_time = random_sample_mixed_distribution(len(q0),
                               *delay_param[0:-1],
@@ -977,13 +1013,12 @@ def nanoflareprof_logNormal(
         axs[0,0].legend()
         axs[0,1].legend()
     time = np.arange(dur + 1)
-    if HeatingFunction is True : heat = np.zeros(int(dur + 1))
+    if HeatingFunction: heat = np.zeros(int(dur + 1))
 
-    #delay_arr = np.zeros(num_nano - 1)
-    #delay_good = np.zeros(num_nano - 1)
-    #seed = !NULL
-    if seed is not None : np.random.seed(seed)
-    t1 = int(100*np.random.uniform(low=0.0, high=1.0, size=1)[0])   # first nanoflare begins randomly in the first 100 s
+    # =========================================================
+    # First nanoflare
+    # =========================================================
+    t1 = int(tau_half + 100*np.random.uniform(low=0.0, high=1.0, size=1)[0])   # first nanoflare begins randomly in the first 100 s
     if HeatingFunction is True :
         for i in range(int(tau_half+1)): heat[t1+i] = q0[0]*i/tau_half  #;                   triangular profile rise
         for i in range(int(tau_half+1), int((2*tau_half)+1)): heat[t1+i] = q0[0]*(2.*tau_half - i)/tau_half  #;  decay
@@ -991,36 +1026,109 @@ def nanoflareprof_logNormal(
     Peak_heat = [q0[0]] #peak heating rate of each triangular profile
     Peak_time = [t1+tau_half] #peak time
 
-    delay_taken = [delay_time[0]]
-    k = 0
-    tnew = t1 + delay_time[0]
-    #delay_arr[0] = tnew - t1
+    delay_taken = []
 
-    while (tnew+2*tau_half < dur):
-        k = k + 1
-        if HeatingFunction is True :
-            for i in range(int(tau_half+1)): heat[int(tnew+i)] = heat[int(tnew+i)] + q0[k]*i/tau_half
-            for i in range(int(tau_half+1), int((2*tau_half)+1)) : heat[int(tnew+i)] = heat[int(tnew+i)] + q0[k]*(2.*tau_half - i)/tau_half
+    # =========================================================
+    # MODE 1:
+    # Number of nanoflares is specified
+    # =========================================================
 
-        Peak_heat += [q0[k]]
-        Peak_time += [tnew+tau_half]
-        told = tnew
-        tnew = told + delay_time[k]
-        delay_taken += [delay_time[k]]
-        #delay_arr[k] = tnew - told
-        #if (tnew >= 10000): delay_good[k] = tnew - told
+    if num_nano is not None:
+        #
+        # Event 0 starts at t1.
+        #
+        # delay_time[0] gives the delay between event 0 and 1,
+        # delay_time[1] between event 1 and 2, etc.
+        #
+
+        current_start = t1
+        for k in range(1, num_nano):
+            delay = delay_time[k - 1]
+            current_start = current_start + delay
+            Peak_heat.append(q0[k])
+            Peak_time.append(current_start + tau_half)
+            delay_taken.append(delay)
+
+        # -----------------------------------------------------
+        # Duration required to completely contain last flare
+        # -----------------------------------------------------
+        estimated_duration = int(np.ceil(current_start+ 2 * tau_half))
+        # Use this duration below when constructing heating array
+        effective_dur = estimated_duration
+
+    # =========================================================
+    # MODE 2:
+    # Original duration-controlled version
+    # =========================================================
+    else:
+        current_start = t1
+        k = 0
+
+        while True:
+            next_start = (current_start+ delay_time[k])
+
+            # Require entire triangular flare to fit
+            if next_start + 2 * tau_half >= dur:
+                break
+            k += 1
+            Peak_heat.append(q0[k])
+            Peak_time.append(next_start + tau_half)
+            delay_taken.append(delay_time[k - 1])
+            current_start = next_start
+
+        #
+        # Actual amount of time occupied by generated events.
+        #
+        # This can be slightly smaller than requested `dur`.
+        #
+        estimated_duration = int(np.ceil(current_start+ 2 * tau_half))
+        effective_dur = int(dur)
 
     delay_taken = np.array(delay_taken)
-    if HeatingFunction is True :
-        h_cor = L_half*1.0e8 #5.e9  #;  coronal scale height
-        heat = heat + qbkg
-        mean_heat = np.mean(heat[0:int(dur)])
-        Mean_energy_flux = mean_heat*h_cor #erg/cm2/s
 
-    #ss = np.where(delay_good != 0.)
-    #delay_good = delay_good[ss]
-    mean_delay = np.mean(delay_time)
-    median_delay = np.median(delay_time)
+    # =========================================================
+    # Construct heating function
+    # =========================================================
+
+    if HeatingFunction:
+        time = np.arange(effective_dur + 1)
+        heat = np.zeros(effective_dur + 1)
+
+        # -----------------------------------------------------
+        # Add individual triangular nanoflares
+        # -----------------------------------------------------
+        for peak_t, peak_q in zip(Peak_time,Peak_heat,):
+            start_t = int(peak_t - tau_half)
+            # Rising half
+            for i in range(int(tau_half + 1)):
+                index = start_t + i
+                if index < len(heat): heat[index] += (peak_q* i/ tau_half)
+
+           # Falling half
+            for i in range(int(tau_half + 1),int(2 * tau_half + 1),):
+                index = start_t + i
+                if index < len(heat):heat[index] += (peak_q* (2.0 * tau_half - i)/ tau_half)
+        # Background heating
+        heat += qbkg
+
+        # -----------------------------------------------------
+        # Mean energy flux
+        # -----------------------------------------------------
+
+        h_cor = L_half * 1.0e8 #5.e9  #;  coronal scale height
+        mean_heat = np.mean(heat[:effective_dur])
+        Mean_energy_flux = (mean_heat * h_cor) #erg/cm2/s
+
+    
+    # =========================================================
+    # Statistics
+    # =========================================================
+    if len(delay_taken) > 0:
+        mean_delay = np.mean(delay_taken)
+        median_delay = np.median(delay_taken)
+    else:
+        mean_delay = np.nan
+        median_delay = np.nan
 
     PrintOut = True
     if PrintOut == True:
@@ -1096,9 +1204,9 @@ def nanoflareprof_logNormal(
             plt.xlabel('Time (s)')
             plt.ylabel('erg cm$^{-3}$ s$^{-1}$')
             plt.show()
-        return time,heat,np.array(Peak_time),np.array(Peak_heat),Mean_energy_flux
+        return time,heat,np.array(Peak_time),np.array(Peak_heat),Mean_energy_flux, estimated_duration
     else:
-        return np.array(Peak_time),np.array(Peak_heat)
+        return np.array(Peak_time),np.array(Peak_heat), estimated_duration
 
 
 
