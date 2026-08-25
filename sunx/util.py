@@ -1012,16 +1012,13 @@ def nanoflareprof_logNormal(
         axs[0,1].set_xlabel('Delay')
         axs[0,0].legend()
         axs[0,1].legend()
-    time = np.arange(dur + 1)
-    if HeatingFunction: heat = np.zeros(int(dur + 1))
+    #time = np.arange(dur + 1)
+    #if HeatingFunction: heat = np.zeros(int(dur + 1))
 
     # =========================================================
     # First nanoflare
     # =========================================================
     t1 = int(tau_half + 100*np.random.uniform(low=0.0, high=1.0, size=1)[0])   # first nanoflare begins randomly in the first 100 s
-    if HeatingFunction is True :
-        for i in range(int(tau_half+1)): heat[t1+i] = q0[0]*i/tau_half  #;                   triangular profile rise
-        for i in range(int(tau_half+1), int((2*tau_half)+1)): heat[t1+i] = q0[0]*(2.*tau_half - i)/tau_half  #;  decay
 
     Peak_heat = [q0[0]] #peak heating rate of each triangular profile
     Peak_time = [t1+tau_half] #peak time
