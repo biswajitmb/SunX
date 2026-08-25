@@ -42,7 +42,8 @@ class fieldalign_model(object):
         L_half, 	#Loop half length in Mm
         Peak_heat,	#heating energy distribution
         Peak_time,	#delay times
-        BKG_T=0.3e6, 	#Average loop background temperature in Kelvin
+        BKG_T=0.5e6, 	#Average loop background temperature in Kelvin
+        BKG_heating_rate = None,
         tau=50,
         SimulationTime=10000,
         electron_ion_partition = 1,
@@ -99,8 +100,12 @@ class fieldalign_model(object):
                                        tau_half*u.s,
                                        Peak_heat[event_ind]*u.Unit('erg cm-3 s-1')
             ))
+
+        if BKG_heating_rate: background = BKG_heating_rate*u.Unit('erg cm-3 s-1')
+        else: background = H_back_loopTop(L_half*1.0e8,BKG_T)*u.Unit('erg cm-3 s-1')
+
         heating = HeatingModel(
-                  background = H_back_loopTop(L_half*1.0e8,BKG_T)*u.Unit('erg cm-3 s-1'),
+                  background = background,
                   partition = partition, #Only electron heating
                   events = events) 
 
@@ -153,6 +158,10 @@ class fieldalign_model(object):
         #results['loop_index'] = L_ind_no[l_ind]
         results['peak_heating_rate'] = Peak_heat
         results['peak_heating_time'] = Peak_time
+        results['BKG_heating_rate'] = BKG_heating_rate
+        results['BKG_T'] = BKG_T
+        results['BKG_heating_rate_used'] = background
+        results['SimulationTime'] = SimulationTime
         results['tau_half'] = tau_half
         if Store_outputs is True :
             # Store the outputs of each-loop
