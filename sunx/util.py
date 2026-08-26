@@ -986,26 +986,26 @@ def nanoflareprof_logNormal(
         axs[0,0].set_ylabel('N/bin')
 
         x_plot = np.linspace(min(q0), max(q0), 100)
-        axs[0,0].plot(x_plot, lognormal_pdf(x_plot,*params_E), label=r'LogNorm:\n$\mu = $'
+        axs[0,0].plot(x_plot, lognormal_pdf(x_plot,*params_E), label='LogNorm:\n$\\mu = $'
                +format('%0.2f'%params_E[0])
-               +r'\n$\sigma$ = '+format('%0.2f'%params_E[1])
-               +r'\nN = '+format('%0.1f'%params_E[-1]))
+               +'\n$\\sigma$ = '+format('%0.2f'%params_E[1])
+               +'\nN = '+format('%0.1f'%params_E[-1]))
 
         axs[0,1].scatter(delay,n)
         axs[0,1].scatter(delay2,n2)
 
         x_plot = np.linspace(min(delay), max(delay), 100)
-        axs[0,1].plot(x_plot, lognormal_pdf(x_plot, *params), 'r-', label=r'LogNorm:\n$\mu = $'+format('%0.2f'%params[0])+r'\n$\sigma$ = '+format('%0.2f'%params[1])+r'\nN = '+format('%0.1f'%params[2]))
+        axs[0,1].plot(x_plot, lognormal_pdf(x_plot, *params), 'r-', label='LogNorm:\n$\\mu = $'+format('%0.2f'%params[0])+'\n$\\sigma$ = '+format('%0.2f'%params[1])+'\nN = '+format('%0.1f'%params[2]))
 
         x_plot = np.linspace(min(delay2), max(delay2), 100)
 
         params2, _ = curve_fit(broken_powerlaw, delay2,n2, p0=[-1,-1.5,1,3000],
             bounds=([-8,-8,0,2500],[-0.1,-0.1,np.inf,4000])
         )
-        axs[0,1].plot(x_plot, broken_powerlaw(x_plot,*params2), label=r'bPolw:\nm1='+format('%0.2f'%params2[0])
-             +r'\nm2='+format('%0.2f'%params2[1])
-             +r'\nc='+format('%0.2f'%params2[2])
-             +r'\nEb='+format('%0.2f'%params2[3])
+        axs[0,1].plot(x_plot, broken_powerlaw(x_plot,*params2), label='bPolw:\nm1='+format('%0.2f'%params2[0])
+             +'\nm2='+format('%0.2f'%params2[1])
+             +'\nc='+format('%0.2f'%params2[2])
+             +'\nEb='+format('%0.2f'%params2[3])
              )
         axs[0,1].set_yscale('log'); axs[0,1].set_xscale('log')
         axs[0,1].set_ylabel('N/bin')
@@ -1147,10 +1147,10 @@ def nanoflareprof_logNormal(
 
         axs[1,0].step(xE,yE)
         x_plot = np.linspace(min(Peak_heat), max(Peak_heat), 100)
-        axs[1,0].plot(x_plot, lognormal_pdf(x_plot,*params_E), label=r'LogNorm:\n$\mu = $'
+        axs[1,0].plot(x_plot, lognormal_pdf(x_plot,*params_E), label='LogNorm:\n$\\mu = $'
                +format('%0.2f'%params_E[0])
-               +r'\n$\sigma$ = '+format('%0.2f'%params_E[1])
-               +r'\nN = '+format('%0.1f'%params_E[-1]))
+               +'\n$\\sigma$ = '+format('%0.2f'%params_E[1])
+               +'\nN = '+format('%0.1f'%params_E[-1]))
 
         axs[1,0].set_xscale('log')
         axs[1,0].set_yscale('log')
@@ -1175,17 +1175,17 @@ def nanoflareprof_logNormal(
         axs[1,1].scatter(delay2,n2)
 
         x_plot = np.linspace(min(delay), max(delay), 100)
-        axs[1,1].plot(x_plot, lognormal_pdf(x_plot, *params), 'r-', label=r'LogNorm:\n$\mu = $'+format('%0.2f'%params[0])+r'\n$\sigma$ = '+format('%0.2f'%params[1])+r'\nN = '+format('%0.1f'%params[2]))
+        axs[1,1].plot(x_plot, lognormal_pdf(x_plot, *params), 'r-', label='LogNorm:\n$\\mu = $'+format('%0.2f'%params[0])+'\n$\\sigma$ = '+format('%0.2f'%params[1])+'\nN = '+format('%0.1f'%params[2]))
 
         x_plot = np.linspace(min(delay2), max(delay2), 100)
 
         params2, _ = curve_fit(broken_powerlaw, delay2,n2, p0=[-1,-1.5,1,3000],
             bounds=([-8,-8,0,2500],[-0.1,-0.1,np.inf,4000])
         )
-        axs[1,1].plot(x_plot, broken_powerlaw(x_plot,*params2), label=r'bPolw:\nm1='+format('%0.2f'%params2[0])
-             +r'\nm2='+format('%0.2f'%params2[1])
-             +r'\nc='+format('%0.2f'%params2[2])
-             +r'\nEb='+format('%0.2f'%params2[3])
+        axs[1,1].plot(x_plot, broken_powerlaw(x_plot,*params2), label='bPolw:\nm1='+format('%0.2f'%params2[0])
+             +'\nm2='+format('%0.2f'%params2[1])
+             +'\nc='+format('%0.2f'%params2[2])
+             +'\nEb='+format('%0.2f'%params2[3])
              )
         axs[1,1].set_yscale('log'); axs[1,1].set_xscale('log')
         axs[1,1].set_ylabel('N/bin')
