@@ -873,6 +873,7 @@ def nanoflareprof_logNormal(
     HeatingFunction = False,
     seed = None,
     Test=False,
+    PrintOut = True,
     ):
 
     '''
@@ -1127,7 +1128,7 @@ def nanoflareprof_logNormal(
         mean_delay = np.nan
         median_delay = np.nan
 
-    PrintOut = True
+    
     if PrintOut == True:
         print(' ')
         if HeatingFunction is True : print('mean energy flux (1.0e7 erg/cm2/s)= ', Mean_energy_flux/1.0e7)
