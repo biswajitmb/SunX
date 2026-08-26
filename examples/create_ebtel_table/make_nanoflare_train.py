@@ -38,7 +38,7 @@ time,heat, Peak_time, Peak_heat, Mean_energy_flux,duration = ar.util.nanoflarepr
 
 #Cross-check the energy distribution with original Shanwlee's distribution
 
-data = np.load('./../data/distributions_for_EBTEL.npz')
+data = np.load('./data/distributions_for_EBTEL.npz')
 data_N = data['energy_before']
 data_E = data['energy']#*unit_conv_fact
 
