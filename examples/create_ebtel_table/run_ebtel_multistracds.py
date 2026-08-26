@@ -95,7 +95,6 @@ def process_r(l_ind,mu_ind, L_half,mu):
         num_nano = total_nanoflare_numbers,
         tau_half=int(tau//2),
         dur=duration,
-        num_nano = num_nanoflare,
         HeatingFunction = True,
         Test=False,
         seed = seed
@@ -120,7 +119,6 @@ def process_r(l_ind,mu_ind, L_half,mu):
         num_nano = total_nanoflare_numbers,
         tau_half=int(tau//2),
         dur=duration,
-        num_nano = num_nanoflare,
         HeatingFunction = True,
         Test=False,
         seed = seed
