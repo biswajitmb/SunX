@@ -5,11 +5,11 @@ from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 import sunx as ar
 
-mu=12.84#13.02 #12.99#6.082#2.641
+mu=12.84+10#13.02 #12.99#6.082#2.641
 sigma = 1.1#0.91#0.907#0.394
 norm = 4.835#2.1
 dur=18816000#100000 #Original Multi-strand simulation were run for a duration of 33e5s
-num_nano = 40000 #if it is not 'None', 'dur' will not be used.
+num_nano = 2000# 40000 #if it is not 'None', 'dur' will not be used.
 L_half = 48
 tau=40
 

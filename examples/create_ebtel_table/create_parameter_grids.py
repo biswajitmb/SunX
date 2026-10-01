@@ -16,19 +16,17 @@ from matplotlib.colors import LogNorm
 mu_original= 12.84 #12.99
 sigma = 1.1 #0.907
 duration= 18816000 #10000
+total_nanoflare_numbers = 2000#None
+tau=50
 
 #Lets consider L_half grid in between 0.1 Mm (or L = 0.2Mm) to 500Mm (or L = 1000Mm). This came from 
 log_L_halfs = np.arange(start=5.7, stop=8.8, step=0.05)
-tau=40
+mu_original_all = np.arange(start=4, stop=19, step=0.1)
 
 tau_half = tau / 2
-
 L_halfs = 10**log_L_halfs / 1.0e6 # in Mm
 
 #L_halfs = [L_halfs[10]]
-
-#mu_original_all = np.arange(start=12.99-4, stop=12.99+8, step=0.1)
-mu_original_all = np.arange(start=4, stop=19, step=0.1)
 
 
 L_all = []

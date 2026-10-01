@@ -60,7 +60,7 @@ OutDir = './outputs'
 for t in range(len(sim_times)):
     duration = sim_times[t]
 
-    time,heat, Peak_time, Peak_heat, Mean_energy_flux = ar.util.nanoflareprof_logNormal(
+    time,heat, Peak_time, Peak_heat, Mean_energy_flux,dur = ar.util.nanoflareprof_logNormal(
        mu=mu,               #log(E) of nanoflare energy
        sigma = sigma,       #sigma of log-normal distribution
        E_low = 0.02,        #Lower log(energy) of log-normal distribition
