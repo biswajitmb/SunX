@@ -50,15 +50,15 @@ duration= 1.0e4 #18816000 #(Not needed if num_nanoflare is given)
 total_nanoflare_numbers = 2000#None
 tau=50
 
-OutDir = '/Users/bmondal/BM_Works/ISWAT/EBTEL_table/codes/ebtel_model/outputs/test'#product'
+OutDir = '/Users/bmondal/BM_Works/ISWAT/EBTEL_table/codes/ebtel_model/outputs/test_c1/TR_loss30Oct2026'#product'
 
 Parallel_run_Ncore = 8
 
 log_L_halfs = np.arange(start=5.7, stop=8.8, step=0.05)#0.5)
 mu_original_all = np.arange(start=4, stop=19, step=0.1)#1)
 
-log_L_halfs = np.array([7.7])
-mu_original_all = np.array([12.84])
+log_L_halfs = np.array([7.7])#np.array([7.0])
+mu_original_all = np.array([12.84-3])
 
 def process_r(l_ind,mu_ind, L_half,mu):
 
@@ -80,7 +80,7 @@ def process_r(l_ind,mu_ind, L_half,mu):
     Ratio_of_BackgroundHeating2nanoflare = 0.1 #Came from multistrand simulation
 
     seed = np.random.randint(10000000, 99999999)
-    #seed = 100000
+    seed = 100000
 
     # =========================================================
     # Estimate background heating
@@ -144,7 +144,7 @@ def process_r(l_ind,mu_ind, L_half,mu):
             Peak_heat,      #heating energy distribution
             Peak_time,      #delay times
             BKG_T=None,    #To mentain loop-top temperature in Kelvin
-            BKG_heating_rate = qbkg,
+            BKG_heating_rate = qbkg, #0.009,#0.0001,#qbkg,
             tau=tau,
             SimulationTime=effective_duration,
             electron_ion_partition = 1,

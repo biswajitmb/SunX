@@ -22,6 +22,7 @@ import tempfile
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as xdm
 from scipy.optimize import curve_fit
+import periodictable as pt
 
 def pardir():
     return '/Users/bmondal/BM_Works/softwares/SunX_main/'
@@ -386,12 +387,27 @@ def Make_AIAXRTcutout(instrument = '', DataDir='',image='',left_bot_arcsec=[-500
     if Plot == True: 
         sub_map1.peek()
     return sub_map1
+#def element(Z):
+#    Z=int(Z)
+#    par_dir = pardir()
+#    z,El,El_lon,el,el_lon = np.loadtxt(par_dir+'database/elements.dat',unpack=True,dtype=np.dtype([("c1", int), ("c2", "U12"),("c3", "U12"),("c4", "U12"),("c5", "U12")]))
+#    ind=np.where(z == Z)[0][0]
+#    return int(z[ind]),El[ind],El_lon[ind],el[ind],el_lon[ind]
+
 def element(Z):
-    Z=int(Z)
-    par_dir = pardir()
-    z,El,El_lon,el,el_lon = np.loadtxt(par_dir+'database/elements.dat',unpack=True,dtype=np.dtype([("c1", int), ("c2", "U12"),("c3", "U12"),("c4", "U12"),("c5", "U12")]))
-    ind=np.where(z == Z)[0][0]
-    return int(z[ind]),El[ind],El_lon[ind],el[ind],el_lon[ind]
+    """
+    Return atomic number, element symbol, full name,
+    lowercase symbol, and lowercase full name.
+    """
+    Z = int(Z)
+    el = pt.elements[Z]
+
+    El = el.symbol
+    El_lon = el.name.capitalize()
+    el_short = el.symbol.lower()
+    el_lon = el.name.lower()
+
+    return Z, El, El_lon, el_short, el_lon
 
 def rebin1d(array,addbins):
     grid = []

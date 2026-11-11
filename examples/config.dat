@@ -33,7 +33,7 @@ CoronalBase = 1.0
 
 [NEI]
 HydradDir = /Users/bmondal/BM_Works/NEI/Hydrad_outputs/steady-run_NEI/
-EquilIonFraction_file = /Users/bmondal/OneDrive_NASA/NPP_works/codes/Make_lines_Chianti/Make_Table/chianti_mod.ioneq
+EquilIonFraction_file = /Users/bmondal/BM_Works/NEI/codes/database/ioneq/chianti_mod.ioneq
 
 ## Descriptions for [SelectEvent]
 #aia_filter - name of aia filter(s) for which the event will be selected

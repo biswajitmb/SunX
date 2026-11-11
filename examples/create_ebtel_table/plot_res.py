@@ -10,13 +10,24 @@ from scipy import interpolate
 from scipy.ndimage import shift
 
 
-DataDir = '/Users/bmondal/BM_Works/ISWAT/EBTEL_table/codes/ebtel_model/outputs/test'
+DataDir = '/Users/bmondal/BM_Works/ISWAT/EBTEL_table/codes/ebtel_model/outputs/test_C1/TR_loss30Oct2026'
 
 #files = ['Lhalf50.00_mu-2.5849_coronal','Lhalf50.00_mu-2.5849_photospheric','Lhalf50.00_mu-2.5849_powerlaw']
 #files = ['Lhalf50.00_mu-2.5849_coronal_dur18816000.0','Lhalf50.00_mu-2.5849_coronal_dur1000000.0','Lhalf50.00_mu-2.5849_coronal_dur100000.0']
 #files = ['LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_k1e-6','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_koriginal','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_k4.06e-7']
 
-files = ['LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_0.2c1','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_0.5c1','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_1.0c1']
+#files = ['LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_0.2c1','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_0.5c1','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_1.0c1']
+
+#files = ['LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_Cargil2012LoffF']
+
+#files = ['LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_ISWAT','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law_Cargill2012']#,'LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law']
+
+#files = ['LInd000000_MuInd000000_Lhalf10.00_mu-0.9755_power_law_ISWAT','LInd000000_MuInd000000_Lhalf10.00_mu-0.9755_power_law_cargill']
+
+files = ['LInd000000_MuInd000000_Lhalf10.00_mu-0.9755_power_law','LInd000000_MuInd000000_Lhalf50.12_mu-2.5873_power_law']
+
+files = ['LInd000000_MuInd000000_Lhalf50.12_mu-3.5873_power_law']
+
 
 def klimchuk_rad2(log_temperature):
         if( log_temperature <= 4.72 ):
@@ -41,11 +52,23 @@ def klimchuk_rad2(log_temperature):
 
         return (chi * (10.0**(alpha*log_temperature)))
 
+def cargill_simple_rad(log_temperature):
+        if( log_temperature <= 4.97 ):
+            chi = 1.1e-31
+            alpha = 2.0
+        else :
+            chi = 1.95e-18
+            alpha = -2./3.
+
+        return (chi * (10.0**(alpha*log_temperature)))
+
 plt.close('all')
 
 #lab = ['1.9e7','1.0e6','1.0e5']
 lab = ['1.0e-6','8.12e-7','4.06e-7']
 lab = ['c1/5','c1/2','c1']
+lab = ['ISWAT Loff func','Cargill 2012','']
+lab = ['20 Mm', '100 Mm']
 
 color=['r','b','g']
 dem_all = []
@@ -61,7 +84,7 @@ for i in range(len(files)):
     dem_cor = data['dem_corona']
     dem_tr = data['dem_tr']
    
-    ind = data['time'].value > 10000
+    ind = data['time'].value > 100000
     dem_cor = data['dem_corona'][ind]
     dem_tr = data['dem_tr'][ind]
 
@@ -112,7 +135,7 @@ def Dem2EM(DEM_logT,DEM_Map):
     #import pdb; pdb.set_trace()
     return Model_EM
 
-print(f"{'AIA Channel':>10} {'I ('+label[0]+')':>15} {'I ('+label[1]+')':>15} {'I ('+label[2]+')':>15}")
+#print(f"{'AIA Channel':>10} {'I ('+label[0]+')':>15} {'I ('+label[1]+')':>15} {'I ('+label[2]+')':>15}")
 print("-" * 60)
 
 
@@ -132,7 +155,7 @@ for i in range(len(chn)):
         #ebtel_em = ebtel_em[ind]; tresp__ = tresp__[ind]
         I = np.sum(tresp__*ebtel_em)
         I_all+= [I]
-    print(f"{chn[i]:10} {I_all[0]:15.4f} {I_all[1]:15.4f} {I_all[2]:15.4f}")
+    #print(f"{chn[i]:10} {I_all[0]:15.4f} {I_all[1]:15.4f}")# {I_all[2]:15.4f}")
     
 R_loss = []
 R_loss_tr = []
@@ -142,7 +165,12 @@ for jj in range(len(dem_all)):
     ebtel_em_cor = Dem2EM(logt_all[jj],dem_all_cor[jj].value)
     ebtel_em_tr = Dem2EM(logt_all[jj],dem_all_tr[jj].value)
     r_loss_ = []
-    for ii in ebtel_logT: r_loss_+=[klimchuk_rad2(ii)]
-    R_loss += [np.sum(ebtel_em_cor*np.array(r_loss_))]
-    R_loss_tr += [np.sum(ebtel_em_tr*np.array(r_loss_))]
+    for ii in ebtel_logT:
+        r_loss_+=[klimchuk_rad2(ii)]
+        #r_loss_+=[cargill_simple_rad(ii)]
+    r_loss_ = np.array(r_loss_)
+    #ind = np.where(ebtel_logT>4.5)
+    ind = np.where((ebtel_logT>=5.7))# & (ebtel_logT<=4.6))
+    R_loss += [np.sum(ebtel_em_cor[ind]*r_loss_[ind])]
+    R_loss_tr += [np.sum(ebtel_em_tr[ind]*r_loss_[ind])]
 

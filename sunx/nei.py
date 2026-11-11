@@ -79,6 +79,7 @@ class nei(object):
 
         Avg_T = []; Avg_density=[]
         for tim in range(n_times):
+            import pdb;pdb.set_trace()
             NEI_IF = results_hydrad[tim].__dict__[key] #[length_array,charge_states]
             grid_centers = results_hydrad[tim].__dict__['_grid_centers']/1.0e8
             ind = np.where(((grid_centers > ChromosHeight) & (grid_centers<(Loop_Length-ChromosHeight))))[0]
